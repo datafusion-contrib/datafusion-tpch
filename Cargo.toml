@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-datafusion = "46.0.1"
-datafusion-expr = "46.0.1"
-tpchgen = "1.0.0"
-tpchgen-arrow = "1.0.0"
+datafusion = "52.3.0"
+datafusion-expr = "52.3.0"
+tpchgen = "2.0.2"
+tpchgen-arrow = "2.0.2"
 
 [dev-dependencies]
-tokio = { version = "1.44.2", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.48.0", features = ["rt-multi-thread", "macros"] }

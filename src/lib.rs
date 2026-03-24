@@ -77,7 +77,7 @@ macro_rules! define_tpch_udtf_provider {
             /// The second and third argument are optional and will default to 1
             /// for both values which tells the generator to generate all parts.
             fn call(&self, args: &[Expr]) -> Result<Arc<dyn TableProvider>> {
-                let Some(Expr::Literal(ScalarValue::Float64(Some(value)))) = args.get(0) else {
+                let Some(Expr::Literal(ScalarValue::Float64(Some(value)), None)) = args.get(0) else {
                     return plan_err!("First argument must be a float literal.");
                 };
 
@@ -90,10 +90,10 @@ macro_rules! define_tpch_udtf_provider {
                 if args.len() > 1 {
                     // Check if the second argument and third arguments are i64 literals and
                     // greater than 0.
-                    let Some(Expr::Literal(ScalarValue::Int64(Some(part)))) = args.get(1) else {
+                    let Some(Expr::Literal(ScalarValue::Int64(Some(part)), None)) = args.get(1) else {
                         return plan_err!("Second argument must be an i64 literal.");
                     };
-                    let Some(Expr::Literal(ScalarValue::Int64(Some(num_parts)))) = args.get(2)
+                    let Some(Expr::Literal(ScalarValue::Int64(Some(num_parts)), None)) = args.get(2)
                     else {
                         return plan_err!("Third argument must be an i64 literal.");
                     };
@@ -221,7 +221,7 @@ impl TpchTables {
         scale_factor: f64,
     ) -> Result<()> {
         let table = provider
-            .call(vec![Expr::Literal(ScalarValue::Float64(Some(scale_factor)))].as_slice())?;
+            .call(vec![Expr::Literal(ScalarValue::Float64(Some(scale_factor)), None)].as_slice())?;
         self.ctx
             .register_table(TableReference::bare(table_name), table)?;
 
@@ -278,7 +278,7 @@ impl TableFunctionImpl for TpchTables {
     /// to disk from the generated memory table.
     fn call(&self, args: &[Expr]) -> Result<Arc<dyn TableProvider>> {
         let scale_factor = match args.first() {
-            Some(Expr::Literal(ScalarValue::Float64(Some(value)))) => *value,
+            Some(Expr::Literal(ScalarValue::Float64(Some(value)), ..)) => *value,
             _ => {
                 return plan_err!(
                     "First argument must be a float literal that specifies the scale factor."
@@ -344,22 +344,22 @@ mod tests {
         ];
 
         for (function, expected_rows, expected_columns) in expected_tables {
-            let df = ctx
+            let batches = ctx
                 .sql(&format!("SELECT * FROM {}(1.0)", function))
                 .await?
                 .collect()
                 .await?;
 
-            assert_eq!(df.len(), 1);
+            let num_rows: usize = batches.iter().map(|b| b.num_rows()).sum();
             assert_eq!(
-                df[0].num_rows(),
+                num_rows,
                 expected_rows,
                 "{}: {}",
                 function,
                 expected_rows
             );
             assert_eq!(
-                df[0].num_columns(),
+                batches[0].num_columns(),
                 expected_columns,
                 "{}: {}",
                 function,
@@ -397,22 +397,23 @@ mod tests {
         ];
 
         for (function, expected_rows, expected_columns) in expected_tables {
-            let df = ctx
+            let batches = ctx
                 .sql(&format!("SELECT * FROM {}(1.0)", function))
                 .await?
                 .collect()
                 .await?;
 
-            assert_eq!(df.len(), 1);
+            let num_rows: usize = batches.iter().map(|b| b.num_rows()).sum();
+
             assert_eq!(
-                df[0].num_rows(),
+                num_rows,
                 expected_rows,
                 "{}: {}",
                 function,
                 expected_rows
             );
             assert_eq!(
-                df[0].num_columns(),
+                batches[0].num_columns(),
                 expected_columns,
                 "{}: {}",
                 function,
@@ -451,22 +452,22 @@ mod tests {
         ];
 
         for (function, expected_rows, expected_columns) in expected_tables {
-            let df = ctx
+            let batches = ctx
                 .sql(&format!("SELECT * FROM {}", function))
                 .await?
                 .collect()
                 .await?;
 
-            assert_eq!(df.len(), 1);
+            let num_rows: usize = batches.iter().map(|b| b.num_rows()).sum();
             assert_eq!(
-                df[0].num_rows(),
+                num_rows,
                 expected_rows,
                 "{}: {}",
                 function,
                 expected_rows
             );
             assert_eq!(
-                df[0].num_columns(),
+                batches[0].num_columns(),
                 expected_columns,
                 "{}: {}",
                 function,
